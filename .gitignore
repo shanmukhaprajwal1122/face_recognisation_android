@@ -1,0 +1,28 @@
+# Backend
+__pycache__/
+*.pyc
+*.pyo
+.env
+faces.db
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# Models (too large for git)
+*.tflite
+*.task
+*.onnx
+
+# Android
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/*.iml
+android-app/.idea/
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
