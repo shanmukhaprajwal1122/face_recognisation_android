@@ -24,7 +24,7 @@ class FaceOverlayView @JvmOverloads constructor(
     private var detections: List<FaceDetection> = emptyList()
     private var previewWidth: Int = 1
     private var previewHeight: Int = 1
-    private var isMirrored: Boolean = true  // front camera is mirrored
+    private var isMirrored: Boolean = false  // Set to false to fix bounding box tracking on opposite side
 
     // Box paint — green when face detected, yellow when liveness pending
     private val boxPaint = Paint().apply {
