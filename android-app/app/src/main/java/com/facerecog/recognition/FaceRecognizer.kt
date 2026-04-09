@@ -48,6 +48,10 @@ class FaceRecognizer(context: Context) {
         return embedding.map { it / norm }.toFloatArray()
     }
 
+    fun close() {
+        interpreter.close()
+    }
+
     companion object {
         fun cosineSimilarity(emb1: FloatArray, emb2: FloatArray): Float {
             var dot = 0.0f

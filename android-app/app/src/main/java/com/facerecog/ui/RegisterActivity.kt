@@ -203,5 +203,8 @@ class RegisterActivity : AppCompatActivity() {
         stopRegistrationCamera()
         cameraManager.shutdown()
         detector.close()
+        faceRecognizer.close()
+        capturedFaces.forEach { it.recycle() }
+        capturedFaces.clear()
     }
 }

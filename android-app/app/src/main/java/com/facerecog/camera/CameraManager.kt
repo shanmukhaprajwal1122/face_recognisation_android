@@ -18,8 +18,11 @@ class CameraManager(
 ) {
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var imageAnalysis: ImageAnalysis? = null
+    private var preview: Preview? = null
     private var cameraProvider: ProcessCameraProvider? = null
     @Volatile private var isStarted: Boolean = false
+    private var lastFrameTimeMs = 0L
+    private val frameIntervalMs = 100L
 
     /**
      * Start the front camera.
@@ -43,21 +46,30 @@ class CameraManager(
 
             if (isStarted) return@addListener
 
-            val preview = Preview.Builder()
+            val previousUseCases = listOfNotNull(preview, imageAnalysis).toTypedArray()
+            if (previousUseCases.isNotEmpty()) {
+                provider.unbind(*previousUseCases)
+            }
+
+            val newPreview = Preview.Builder()
                 .setTargetResolution(Size(640, 480))
                 .build()
                 .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
-            imageAnalysis = ImageAnalysis.Builder()
+            val newAnalysis = ImageAnalysis.Builder()
                 .setTargetResolution(Size(640, 480))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
 
-            imageAnalysis!!.setAnalyzer(cameraExecutor) { imageProxy ->
+            newAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
                 try {
-                    val bitmap = imageProxy.toBitmap()
-                    onFrame(bitmap)
+                    val now = System.currentTimeMillis()
+                    if (now - lastFrameTimeMs >= frameIntervalMs) {
+                        lastFrameTimeMs = now
+                        val bitmap = imageProxy.toBitmap()
+                        onFrame(bitmap)
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("CameraManager", "Frame analysis failed", e)
                 } finally {
@@ -66,13 +78,14 @@ class CameraManager(
             }
 
             try {
-                provider.unbindAll()
                 provider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_FRONT_CAMERA,
-                    preview,
-                    imageAnalysis
+                    newPreview,
+                    newAnalysis
                 )
+                preview = newPreview
+                imageAnalysis = newAnalysis
                 isStarted = true
             } catch (e: Exception) {
                 android.util.Log.e("CameraManager", "Camera binding failed", e)
@@ -81,10 +94,14 @@ class CameraManager(
     }
 
     fun stopCamera() {
-        if (!isStarted && imageAnalysis == null) return
+        if (!isStarted && imageAnalysis == null && preview == null) return
         imageAnalysis?.clearAnalyzer()
+        val useCasesToUnbind = listOfNotNull(preview, imageAnalysis).toTypedArray()
+        if (useCasesToUnbind.isNotEmpty()) {
+            cameraProvider?.unbind(*useCasesToUnbind)
+        }
         imageAnalysis = null
-        cameraProvider?.unbindAll()
+        preview = null
         isStarted = false
     }
 

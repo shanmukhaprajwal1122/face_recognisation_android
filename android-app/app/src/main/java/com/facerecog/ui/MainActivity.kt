@@ -302,5 +302,6 @@ class MainActivity : AppCompatActivity() {
         if (::detector.isInitialized)         detector.close()
         if (::livenessChecker.isInitialized)  livenessChecker.close()
         if (::antiSpoofChecker.isInitialized) antiSpoofChecker.close()
+        if (::faceRecognizer.isInitialized)   faceRecognizer.close()
     }
 }

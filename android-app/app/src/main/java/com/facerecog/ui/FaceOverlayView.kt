@@ -24,7 +24,7 @@ class FaceOverlayView @JvmOverloads constructor(
     private var detections: List<FaceDetection> = emptyList()
     private var previewWidth: Int = 1
     private var previewHeight: Int = 1
-    private var isMirrored: Boolean = false  // Set to false to fix bounding box tracking on opposite side
+    private var isMirrored: Boolean = true  // Set to true to fix horizontally flipped tracking
 
     // Box paint — green when face detected, yellow when liveness pending
     private val boxPaint = Paint().apply {
@@ -124,17 +124,24 @@ class FaceOverlayView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (detections.isEmpty()) return
 
-        val scaleX = width.toFloat() / previewWidth
-        val scaleY = height.toFloat() / previewHeight
+        val scale = maxOf(width.toFloat() / previewWidth, height.toFloat() / previewHeight)
+        val offsetX = (width - previewWidth * scale) / 2f
+        val offsetY = (height - previewHeight * scale) / 2f
 
         for (detection in detections) {
             val box = detection.boundingBox
 
-            // Scale and mirror coordinates to match preview display
-            val left   = if (isMirrored) width - box.right * scaleX else box.left * scaleX
-            val right  = if (isMirrored) width - box.left * scaleX  else box.right * scaleX
-            val top    = box.top * scaleY
-            val bottom = box.bottom * scaleY
+            // Scale coordinates
+            val mappedLeft   = box.left * scale + offsetX
+            val mappedRight  = box.right * scale + offsetX
+            val mappedTop    = box.top * scale + offsetY
+            val mappedBottom = box.bottom * scale + offsetY
+
+            // Mirror if necessary (typically front camera needs mirroring visually)
+            val left   = if (isMirrored) width - mappedRight else mappedLeft
+            val right  = if (isMirrored) width - mappedLeft else mappedRight
+            val top    = mappedTop
+            val bottom = mappedBottom
 
             val scaledBox = RectF(left, top, right, bottom)
 
@@ -147,8 +154,10 @@ class FaceOverlayView @JvmOverloads constructor(
 
             // Draw landmarks
             for (lm in detection.landmarks) {
-                val lx = if (isMirrored) width - lm.x * scaleX else lm.x * scaleX
-                val ly = lm.y * scaleY
+                val mappedX = lm.x * scale + offsetX
+                val mappedY = lm.y * scale + offsetY
+                val lx = if (isMirrored) width - mappedX else mappedX
+                val ly = mappedY
                 canvas.drawCircle(lx, ly, 6f, landmarkPaint)
             }
 
