@@ -90,7 +90,7 @@ class FaceOverlayView @JvmOverloads constructor(
     var livenessConfirmed: Boolean = false
         set(value) {
             field = value
-            boxPaint.color = if (value) Color.parseColor("#4CAF50") : Color.parseColor("#FFC107")
+            boxPaint.color = if (value) Color.parseColor("#4CAF50") else Color.parseColor("#FFC107")
             invalidate()
         }
 
