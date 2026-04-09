@@ -138,12 +138,9 @@ class MainActivity : AppCompatActivity() {
 
         // 1. Detect face
         val detections = detector.detect(bitmap)
-        onUi {
-            binding.overlayView.setSourceDimensions(bitmap.width, bitmap.height)
-            binding.overlayView.updateDetections(detections)
-        }
 
         if (detections.isEmpty()) {
+            onUi { binding.overlayView.clear() }
             if (livenessChecker.state != LivenessState.NO_FACE) {
                 livenessChecker.reset()
                 onUi { setStatus("No face detected", StatusType.INFO) }
@@ -152,20 +149,34 @@ class MainActivity : AppCompatActivity() {
         }
 
         lastBitmap    = bitmap
-        lastDetection = detections[0]
+        val detection = detections[0]
+        lastDetection = detection
 
         // 2. Blink liveness
         livenessChecker.processFrame(bitmap)
 
+        val isLivenessConfirmed = livenessChecker.state == LivenessState.BLINK_DETECTED
+        val nameToShow = if (binding.tvStatus.text.contains("Recognized")) {
+            binding.tvStatus.text.toString().substringAfter("Recognized: ").substringBefore(" (")
+        } else {
+            "Detecting"
+        }
+
         onUi {
+            val rect = android.graphics.Rect(
+                detection.boundingBox.left.toInt(),
+                detection.boundingBox.top.toInt(),
+                detection.boundingBox.right.toInt(),
+                detection.boundingBox.bottom.toInt()
+            )
+            binding.overlayView.setFaceData(rect, nameToShow, isLivenessConfirmed, bitmap.width, bitmap.height)
+            
             when (livenessChecker.state) {
                 LivenessState.NO_FACE      -> setStatus("Face found. Hold steady and blink", StatusType.INFO)
                 LivenessState.WAITING_BLINK -> {
-                    binding.overlayView.livenessConfirmed = false
                     setStatus("Blink to verify liveness", StatusType.INFO)
                 }
                 LivenessState.BLINK_DETECTED -> {
-                    binding.overlayView.livenessConfirmed = true
                     if (isCapturing.compareAndSet(false, true)) {
                         setStatus("Checking...", StatusType.INFO)
                         binding.progressBar.visibility = View.VISIBLE
@@ -183,15 +194,15 @@ class MainActivity : AppCompatActivity() {
         scope.launch {
             val (aligned, faceCrop) = withContext(Dispatchers.Default) {
                 val aligned = detector.alignFace(bitmap, detection)
-                // Crop bounding box for anti-spoof (NOT the aligned 112x112)
-                val box = detection.boundingBox
-                val cx = box.left.toInt().coerceAtLeast(0)
-                val cy = box.top.toInt().coerceAtLeast(0)
-                val cw = (box.width().toInt()).coerceAtMost(bitmap.width - cx)
-                val ch = (box.height().toInt()).coerceAtMost(bitmap.height - cy)
-                val crop = if (cw > 0 && ch > 0)
-                    Bitmap.createBitmap(bitmap, cx, cy, cw, ch)
-                else bitmap
+                val bounds = detection.boundingBox
+                val safeLeft = maxOf(0, bounds.left.toInt())
+                val safeTop = maxOf(0, bounds.top.toInt())
+                val safeRight = minOf(bitmap.width, bounds.right.toInt())
+                val safeBottom = minOf(bitmap.height, bounds.bottom.toInt())
+
+                val crop = if(safeRight > safeLeft && safeBottom > safeTop) {
+                    Bitmap.createBitmap(bitmap, safeLeft, safeTop, safeRight - safeLeft, safeBottom - safeTop)
+                } else bitmap
                 Pair(aligned, crop)
             }
 
@@ -236,20 +247,17 @@ class MainActivity : AppCompatActivity() {
                 onUi {
                     binding.progressBar.visibility = View.GONE
                     binding.tvStatus.text = msg
-                    binding.overlayView.markRecognized(bestMatchName)
                 }
             } else {
                 onUi {
                     binding.progressBar.visibility = View.GONE
                     binding.tvStatus.text = "Unknown Face"
-                    binding.overlayView.markUnknown()
                 }
             }
 
             scope.launch {
                 delay(2000)
                 onUi {
-                    binding.overlayView.clearRecognition()
                     resetCycle()
                 }
             }
@@ -261,7 +269,7 @@ class MainActivity : AppCompatActivity() {
         isCapturing.set(false)
         binding.resultCard.visibility         = View.GONE
         binding.btnRetry.visibility           = View.GONE
-        binding.overlayView.livenessConfirmed = false
+        binding.overlayView.clear()
         setStatus("Look at the camera and blink", StatusType.INFO)
     }
 

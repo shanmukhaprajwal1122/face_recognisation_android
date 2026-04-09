@@ -56,8 +56,9 @@ class AntiSpoofChecker(context: Context) {
 
         return try {
             interpreter.run(input, output)
-            val spoofScore = output[0][0]
-            val liveScore  = output[0][1]
+            // Model actually outputs live score at 0 and spoof score at 1
+            val liveScore  = output[0][0]
+            val spoofScore = output[0][1]
             val isReal = liveScore > REAL_THRESHOLD
             Log.d(TAG, "live=${"%.3f".format(liveScore)} spoof=${"%.3f".format(spoofScore)} → ${if (isReal) "REAL" else "SPOOF"}")
             AntiSpoofResult(isReal, liveScore, spoofScore)

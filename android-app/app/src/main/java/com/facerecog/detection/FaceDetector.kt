@@ -251,14 +251,16 @@ class FaceDetector(context: Context, modelFile: String = "retinaface.tflite") {
                 if (faceScore < CONF_THRESH) continue
 
                 val anchor = anchors[anchorIdx]
-                val cx = anchor[0]; val cy = anchor[1]
-                val aw = anchor[2]; val ah = anchor[3]
+                val cx = anchor[0]
+                val cy = anchor[1]
+                val aw = anchor[2]
+                val ah = anchor[3]
 
                 // Box decode: [dx, dy, dw, dh] → [x1, y1, x2, y2]
-                val predCx = cx + boxRow[0] * aw
-                val predCy = cy + boxRow[1] * ah
-                val predW  = aw * Math.exp(boxRow[2].toDouble()).toFloat()
-                val predH  = ah * Math.exp(boxRow[3].toDouble()).toFloat()
+                val predCx = cx + boxRow[0] * 0.1f * aw
+                val predCy = cy + boxRow[1] * 0.1f * ah
+                val predW  = aw * kotlin.math.exp(boxRow[2].toDouble() * 0.2).toFloat()
+                val predH  = ah * kotlin.math.exp(boxRow[3].toDouble() * 0.2).toFloat()
 
                 val x1 = (predCx - predW / 2) * scaleX
                 val y1 = (predCy - predH / 2) * scaleY
@@ -271,12 +273,12 @@ class FaceDetector(context: Context, modelFile: String = "retinaface.tflite") {
                     if (ldmRow == null || ldmRow.size < 10) {
                         estimateLandmarks(x1, y1, x2, y2)
                     } else {
-                    Array(5) { j ->
-                        PointF(
-                            (cx + ldmRow[j * 2]     * aw) * scaleX,
-                            (cy + ldmRow[j * 2 + 1] * ah) * scaleY
-                        )
-                    }
+                        Array(5) { j ->
+                            PointF(
+                                (cx + ldmRow[j * 2] * 0.1f * aw) * scaleX,
+                                (cy + ldmRow[j * 2 + 1] * 0.1f * ah) * scaleY
+                            )
+                        }
                     }
                 } else estimateLandmarks(x1, y1, x2, y2)
 

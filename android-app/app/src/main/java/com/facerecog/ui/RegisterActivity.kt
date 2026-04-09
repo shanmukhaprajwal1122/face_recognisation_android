@@ -68,8 +68,18 @@ class RegisterActivity : AppCompatActivity() {
             latestBitmap = bitmap
             latestDetection = detections.firstOrNull()
             onUi {
-                binding.overlayView.setSourceDimensions(bitmap.width, bitmap.height)
-                binding.overlayView.updateDetections(detections)
+                if (detections.isEmpty()) {
+                    binding.overlayView.clear()
+                } else {
+                    val detection = detections[0]
+                    val rect = android.graphics.Rect(
+                        detection.boundingBox.left.toInt(),
+                        detection.boundingBox.top.toInt(),
+                        detection.boundingBox.right.toInt(),
+                        detection.boundingBox.bottom.toInt()
+                    )
+                    binding.overlayView.setFaceData(rect, "Registering", true, bitmap.width, bitmap.height)
+                }
             }
         }
         registerCameraStarted = true
